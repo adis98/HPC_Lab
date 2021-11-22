@@ -21,6 +21,8 @@ int proc_top,proc_bottom,proc_left,proc_right;
 int periods[2] = {0,0};
 int offset[2];
 int P;
+int nx = -1;
+int ny = -1; //to override input.dat values from command line
 int P_grid[2];
 MPI_Comm grid_comm;
 MPI_Status status;
@@ -35,8 +37,9 @@ enum
 int gridsize[2];
 double precision_goal;		/* precision_goal of solution */
 int max_iter;			/* maximum number of iterations alowed */
+int override_max_iter = -1;
 double global_delta;
-double omega = 1.90; //the omega parameter to modify
+double omega = 1.95; //the omega parameter to modify
 
 /* benchmark related variables */
 clock_t ticks;			/* number of systemticks */
@@ -108,7 +111,18 @@ void Setup_Proc_Grid(int argc,char **argv){
   if(argc > 2){
     P_grid[X_DIR] = atoi(argv[1]);
     P_grid[Y_DIR] = atoi(argv[2]);
-    omega = atof(argv[3]); //get the value of omega
+    if(argc > 3){
+      omega = atof(argv[3]); //get the value of omega
+    }
+    if(argc > 4){
+        nx = atoi(argv[4]);
+    }
+    if(argc > 5){
+      ny = atoi(argv[5]);
+    }
+    if(argc > 6){
+      override_max_iter = atoi(argv[6]);
+    }
     if(P_grid[X_DIR]*P_grid[Y_DIR] != P){
       Debug("ERROR: Process dimensions do not match with P",1);
     }
@@ -189,6 +203,15 @@ void Setup_Grid()
     fscanf(f, "ny: %i\n", &gridsize[Y_DIR]);
     fscanf(f, "precision goal: %lf\n", &precision_goal);
     fscanf(f, "max iterations: %i\n", &max_iter);
+  }
+  if(nx != -1){
+    gridsize[X_DIR] = nx;
+  }
+  if(ny != -1){
+    gridsize[Y_DIR] = ny;
+  }
+  if(override_max_iter != -1){
+    max_iter = override_max_iter;
   }
   MPI_Bcast(gridsize,2,MPI_INT,0,grid_comm);
   MPI_Bcast(&precision_goal,1,MPI_DOUBLE,0,grid_comm);
@@ -271,10 +294,11 @@ double Do_Step(int parity)
   int x, y;
   double old_phi;
   double max_err = 0.0;
+  int stop = 0;
 
   /* calculate interior of grid */
-  for (x = 1; x < dim[X_DIR] - 1; x++)
-    for (y = 1; y < dim[Y_DIR] - 1; y++)
+  for (x = 1; x < dim[X_DIR] - 1; x++){
+    for (y = 1; y < dim[Y_DIR] - 1; y++){
       if (local_parity == parity && source[x][y] != 1)
       {
 	       old_phi = phi[x][y];
@@ -283,6 +307,15 @@ double Do_Step(int parity)
 	       if (max_err < fabs(old_phi - phi[x][y]))
 	           max_err = fabs(old_phi - phi[x][y]);
       }
+      else{
+        stop = 1;
+        break;
+      }
+    }
+    if(stop == 1){
+      break;
+    }
+  }
   return max_err;
 }
 
@@ -306,7 +339,11 @@ void Solve()
     delta2 = Do_Step(1);
     Exchange_Borders();
     delta = max(delta1, delta2);
+
     MPI_Allreduce(&delta,&global_delta,1,MPI_DOUBLE,MPI_MAX,grid_comm);
+    if(count%100 == 0 && proc_rank == 0){
+      printf("step number: %i, error: %f\n",count,delta);
+    }
     count++;
   }
 
