@@ -36,7 +36,7 @@ int gridsize[2];
 double precision_goal;		/* precision_goal of solution */
 int max_iter;			/* maximum number of iterations alowed */
 double global_delta;
-double w = 1.90; //the omega parameter to modify
+double omega = 1.90; //the omega parameter to modify
 
 /* benchmark related variables */
 clock_t ticks;			/* number of systemticks */
@@ -108,6 +108,7 @@ void Setup_Proc_Grid(int argc,char **argv){
   if(argc > 2){
     P_grid[X_DIR] = atoi(argv[1]);
     P_grid[Y_DIR] = atoi(argv[2]);
+    omega = atof(argv[3]); //get the value of omega
     if(P_grid[X_DIR]*P_grid[Y_DIR] != P){
       Debug("ERROR: Process dimensions do not match with P",1);
     }
@@ -278,7 +279,7 @@ double Do_Step(int parity)
       {
 	       old_phi = phi[x][y];
          double change = ((phi[x + 1][y] + phi[x - 1][y] + phi[x][y + 1] + phi[x][y - 1]) * 0.25) - old_phi;
-	       phi[x][y] = old_phi + w*change;
+	       phi[x][y] = old_phi + omega*change;
 	       if (max_err < fabs(old_phi - phi[x][y]))
 	           max_err = fabs(old_phi - phi[x][y]);
       }
