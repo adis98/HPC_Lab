@@ -1,9 +1,0 @@
-FileZilla - for easy remote file mgmt
-
-
-ihpc2149
-b3lzHk7L
-AdsunkDAS5
-
-module load prun
-module load openmpi/gcc

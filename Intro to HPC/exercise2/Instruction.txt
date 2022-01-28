@@ -1,1 +1,0 @@
-please use command line: cp Makefile.txt Makefile to generate a new file Makefile to compile the code
